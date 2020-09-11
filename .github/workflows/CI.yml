@@ -20,10 +20,12 @@ jobs:
     runs-on: ${{ matrix.os }}
   
     steps:
-    # tell git not to convert line endings
+    # tell git not to convert line endings, and add /usr/local/bin to PATH
     - name: turn off git autocrlf
       if: matrix.os == 'windows-latest'
-      run: git config --global core.autocrlf false
+      run: |
+        git config --global core.autocrlf false
+        echo "::add-path::/usr/local/bin"
 
     # Check out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
