@@ -25,8 +25,8 @@ jobs:
       if: matrix.os == 'windows-latest'
       run: |
         git config --global core.autocrlf false
-        echo "::set-env name=ROSWELL_INSTALL_DIR::~/ros"
-        echo "::add-path::~/ros/bin"
+        echo "::set-env name=ROSWELL_INSTALL_DIR::$HOME/ros"
+        echo "::add-path::$HOME/ros/bin"
 
     # Check out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
