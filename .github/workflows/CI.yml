@@ -46,7 +46,7 @@ jobs:
       env:
        LISP: ${{ matrix.lisp }}
       #run: curl -L https://raw.githubusercontent.com/roswell/roswell/master/scripts/install-for-ci.sh | sh -x
-      run: curl -L https://raw.githubusercontent.com/3b/roswell/test/scripts/install-for-ci.sh | sh -x
+      run: curl -L https://raw.githubusercontent.com/3b/roswell/8fdd117e75b09827115f14093bdaf71bb1fb8681/scripts/install-for-ci.sh | sh -x
     - name: run lisp
       continue-on-error: true
       shell: bash
