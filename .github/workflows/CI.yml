@@ -13,7 +13,7 @@ jobs:
     name: ${{ matrix.lisp }} on ${{ matrix.os }}
     strategy:
       matrix:
-        lisp: [sbcl-bin, ccl]
+        lisp: [sbcl-bin]
         os: [ubuntu-latest, macos-latest, windows-latest]
          
     # run the job on every combination of "lisp" and "os" above
