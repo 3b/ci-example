@@ -1,6 +1,6 @@
 (defpackage #:ci-example.test
   (:use #:cl)
-  (:package-local-nicknames (#:x #:ci-example))
+  (:local-nicknames (#:x #:ci-example))
   (:export #:run-tests-for-ci))
 
 (in-package #:ci-example.test)
