@@ -41,6 +41,7 @@ jobs:
           ${{ runner.os }}-dot-roswell-${{ matrix.lisp }}-
           ${{ runner.os }}-dot-roswell-
     - name: install roswell
+      shell: bash
       # always run install, since it does some global installs and setup that isn't cached
       env:
        LISP: ${{ matrix.lisp }}
