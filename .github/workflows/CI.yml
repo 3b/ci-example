@@ -1,0 +1,60 @@
+name: CI
+
+# Controls when the action will run. Triggers the workflow on push for any branch, and
+# pull requests to master
+on:
+  push:
+  pull_request:
+    branches: [ master ]
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  test:
+    name: ${{ matrix.lisp }} on ${{ matrix.os }}
+    strategy:
+      matrix:
+        lisp: [sbcl-bin,ccl]
+        os: [ubuntu-latest, macos-latest, windows-latest]
+         
+    # run the job on every combination of "lisp" and "os" above
+    runs-on: ${{ matrix.os }}
+  
+  steps:
+    # tell git not to convert line endings
+    - name: turn off git autocrlf
+      if: matrix.os == 'windows-latest'
+      run: git config --global core.autocrlf false
+
+    # Check out your repository under $GITHUB_WORKSPACE, so your job can access it
+    - uses: actions/checkout@v2
+
+    - name: cache .roswell
+      id: cache-dot-roswell
+      uses: actions/cache@v1
+      with:
+        path: ~/.roswell
+        key: ${{ runner.os }}-dot-roswell-${{ matrix.lisp }}-${{ hashFiles('**/*.asd') }}
+        restore-keys: |
+          ${{ runner.os }}-dot-roswell-${{ matrix.lisp }}-
+          ${{ runner.os }}-dot-roswell-
+    - name: install roswell
+      # always run install, since it does some global installs and setup that isn't cached
+      env:
+       LISP: ${{ matrix.lisp }}
+      run: curl -L https://raw.githubusercontent.com/roswell/roswell/master/scripts/install-for-ci.sh | sh
+
+    - name: run lisp
+      continue-on-error: true
+      shell: bash
+      run: |
+        ros -e '(format t "~a:~a on ~a~%...~%~%" (lisp-implementation-type) (lisp-implementation-version) (machine-type))'
+        ros -e '(format t " fixnum bits:~a~%" (integer-length most-positive-fixnum))'
+        ros -e "(ql:quickload 'trivial-features)" -e '(format t "features = ~s~%" *features*)'
+    - name: update ql dist if we have one cached
+      shell: bash
+      run: ros -e "(ql:update-all-dists :prompt nil)"
+
+    - name: load code and run tests
+      shell: bash
+      run: |
+        ros -e '(handler-bind (#+asdf3.2(asdf:bad-SYSTEM-NAME (function MUFFLE-WARNING))) (handler-case (ql:quickload :ci-example.test) (error (a) (format t "caught error ~s~%~a~%" a a) (uiop:quit 123))))' -e '(ci-example.test:run-tests-for-ci)'
