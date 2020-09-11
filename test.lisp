@@ -12,8 +12,10 @@
         (assert (= (x:run 1) 2))
         (unless (= (x:run 2) 3)
           (format t "test failed~%")
+          (finish-output)
           (uiop:quit 124)))
     (error (a)
       (format t "caught error ~s~%~a~%" a a)
+      (finish-output)
       (uiop:quit 125))))
 
