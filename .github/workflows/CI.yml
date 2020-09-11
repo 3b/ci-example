@@ -13,7 +13,7 @@ jobs:
     name: ${{ matrix.lisp }} on ${{ matrix.os }}
     strategy:
       matrix:
-        lisp: [sbcl-bin,ccl]
+        lisp: [sbcl-bin]
         os: [windows-latest] #[ubuntu-latest, macos-latest, windows-latest]
          
     # run the job on every combination of "lisp" and "os" above
@@ -25,7 +25,8 @@ jobs:
       if: matrix.os == 'windows-latest'
       run: |
         git config --global core.autocrlf false
-        echo "::add-path::/usr/local/bin"
+        echo "::set-env name=ROSWELL_INSTALL_DIR::~/ros"
+        echo "::add-path::~/ros/bin"
 
     # Check out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
