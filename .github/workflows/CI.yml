@@ -20,8 +20,9 @@ jobs:
     runs-on: ${{ matrix.os }}
   
     steps:
-    # tell git not to convert line endings, and add /usr/local/bin to PATH
-    - name: turn off git autocrlf
+    # tell git not to convert line endings
+    # change roswell install dir and add it to path
+    - name: windows specific settings
       if: matrix.os == 'windows-latest'
       run: |
         git config --global core.autocrlf false
@@ -46,7 +47,7 @@ jobs:
       env:
        LISP: ${{ matrix.lisp }}
       #run: curl -L https://raw.githubusercontent.com/roswell/roswell/master/scripts/install-for-ci.sh | sh -x
-      run: curl -L https://raw.githubusercontent.com/3b/roswell/8fdd117e75b09827115f14093bdaf71bb1fb8681/scripts/install-for-ci.sh | sh -x
+      run: curl -L https://raw.githubusercontent.com/3b/roswell/test/scripts/install-for-ci.sh | sh -x
     - name: run lisp
       continue-on-error: true
       shell: bash
