@@ -47,7 +47,7 @@ jobs:
       run: |
         git config --global core.autocrlf false
         echo "ROSWELL_INSTALL_DIR=$HOME/ros" >> $GITHUB_ENV
-        echo "$HOME/ros/bin" >> %GITHUB_PATH
+        echo "$HOME/ros/bin" >> $GITHUB_PATH
 
     # Check out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
