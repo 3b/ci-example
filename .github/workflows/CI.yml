@@ -18,7 +18,12 @@ jobs:
          
     # run the job on every combination of "lisp" and "os" above
     runs-on: ${{ matrix.os }}
-  
+
+    # default to msys2 shell on windows, since roswell install-for-ci.sh tries to install using pacman
+    defaults:
+      run:
+        shell: ${{ fromJSON('[ "bash", "msys2 {0}" ]') [ matrix.os == 'windows-latest' ] }}
+
     steps:
     # tell git not to convert line endings
     # change roswell install dir and add it to path
@@ -31,6 +36,16 @@ jobs:
 
     # Check out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
+
+    # use setup-msys2 
+    - uses: msys2/setup-msys2@v2
+      with:
+        path-type: inherit
+        # list any extra packages we want installed
+
+        # for example the following would be enough for us to build sbcl
+        # from git:
+        # install: 'git base-devel unzip mingw-w64-x86_64-gcc mingw64/mingw-w64-x86_64-zlib'
 
     - name: cache .roswell
       id: cache-dot-roswell
