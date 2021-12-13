@@ -28,6 +28,7 @@ jobs:
 
     # use setup-msys2 
     - uses: msys2/setup-msys2@v2
+      if: matrix.os == 'windows-latest'
       with:
         path-type: inherit
         # list any extra packages we want installed
