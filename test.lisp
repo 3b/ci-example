@@ -20,7 +20,7 @@
     (flet ((try (x) (if x (incf ok) (incf failed))))
       (try (= (x:run 3) 4))
       (try (= (x:run 4) 5))
-      (loop repeat 4 for i from 10 for j from 11 (try (= (x:run i) j)))))
+      (loop repeat 4 for i from 10 for j from 11 do (try (= (x:run i) j)))))
   (format t "passed ~s, failed ~s~%")
   ;; return NIL if there were failures, so CI will fail
   (= failed 0))
