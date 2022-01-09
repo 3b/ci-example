@@ -49,7 +49,7 @@ jobs:
         # for example the following would be enough for us to build sbcl
         # from git:
         # install: 'git base-devel unzip mingw-w64-x86_64-gcc mingw64/mingw-w64-x86_64-zlib'
-        install: roswell
+        install: mingw-w64-x86_64-roswell
 
 
     # tell git not to convert line endings, and set up some PATHs
