@@ -1,13 +1,16 @@
 name: CI
 
-# Controls when the action will run. Triggers the workflow on push for any branch, and
-# pull requests to master
+# Controls when the action will run. Triggers the workflow on push for
+# any branch, and pull requests to master
+
 on:
   push:
   pull_request:
     branches: [ master ]
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+# A workflow run is made up of one or more jobs that can run
+# sequentially or in parallel
+
 jobs:
   test:
     name: ${{ matrix.lisp }} on ${{ matrix.os }}
@@ -21,10 +24,11 @@ jobs:
     # run the job on every combination of "lisp" and "os" above
     runs-on: ${{ matrix.os }}
 
-    # default to msys2 shell on windows, since roswell install-for-ci.sh tries to install using pacman
+
+    # default to msys2 shell on windows, bash elsewhere
     defaults:
       run:
-        shell: ${{ fromJSON('[ "bash", "msys2 {0}" ]') [ matrix.os == 'windows-latest' ] }}
+        shell: ${{ fromJSON('[ "bash -leo pipefail", "msys2" ]') [ matrix.os == 'windows-latest' ] }} "{0}"
 
     steps:
 
@@ -32,25 +36,53 @@ jobs:
     - uses: msys2/setup-msys2@v2
       if: matrix.os == 'windows-latest'
       with:
-        path-type: inherit
+        path-type: minimal
+
+        # since we are installing things, we use release to get a clean
+        # install, and update since msys doesn't support installing
+        # without updating
+        release: true
+        update: true
+
         # list any extra packages we want installed
 
         # for example the following would be enough for us to build sbcl
         # from git:
         # install: 'git base-devel unzip mingw-w64-x86_64-gcc mingw64/mingw-w64-x86_64-zlib'
+        install: roswell
 
 
-    # tell git not to convert line endings
-    # change roswell install dir and add it to path
+    # tell git not to convert line endings, and set up some PATHs
     - name: windows specific settings
       if: matrix.os == 'windows-latest'
+      # run with powershell so it sets the git config used by actions/checkout
+      # and so $HOME is the one roswell uses
+      shell: pwsh
       run: |
         git config --global core.autocrlf false
-        echo "ROSWELL_INSTALL_DIR=$HOME/ros" >> $GITHUB_ENV
-        echo "$HOME/ros/bin" >> $GITHUB_PATH
+        git config --global core.eol lf
+
+        # make sure MSYSCON is set so roswell doesn't try to install msys
+        echo "MSYSCON=defterm" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+        # roswell installs to windows profile dir, so add to PATH using
+        # pwsh $HOME also
+        echo "$HOME/.roswell/bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+        # not sure what makes roswell install things here
+        echo "$HOME/.roswell/lisp/quicklisp/bin" | Out-File -FilePath $env:GITHUB_PATH -Append
 
     # Check out your repository under $GITHUB_WORKSPACE, so your job can access it
     - uses: actions/checkout@v2
+      with:
+        path: cl-example
+
+    # and any additional dependencies that must be checked out manually
+    - name: ci-utils fork
+      uses: actions/checkout@v2
+      with:
+        repository: 3b/ci-utils
+        ref: test2
+        path: ci-utils
 
     - name: cache .roswell
       id: cache-dot-roswell
@@ -68,15 +100,72 @@ jobs:
        LISP: ${{ matrix.lisp }}
       run: curl -L https://raw.githubusercontent.com/roswell/roswell/master/scripts/install-for-ci.sh | sh -x
 
+
+    - name: install ci-utils
+      run: |
+        ros install ci-utils
+        echo "$HOME/.roswell/bin" >> $GITHUB_PATH
+        echo "$HOME/.roswell/bin"
+        # we specified a login shell above, so use bash_profile to define
+        # a test wrapper function for tests below
+        cat <<"EOF" > ~/.bash_profile
+        echo "loading functions"
+        if [ -z $MSYSCON ] ; then
+           CI_UTILS=$GITHUB_WORKSPACE/ci-utils
+        else
+           CI_UTILS=$(cygpath $GITHUB_WORKSPACE)/ci-utils
+        fi
+        RUN=$CI_UTILS/roswell/run-test-forms.ros
+        # arbitrary exit code we tell lisp code to use to signal success
+        PASS=33
+        # value we expect on "successful" run of a test, usually $PASS
+        # unless the test isn't expected to return normally from the
+        # lisp code
+        EXPECT=$PASS
+        run_tests () {
+          # passes arguments to run-test-forms, so use like
+          # run_tests -l system (form)
+          echo "$RUN $*"
+          # run in a subshell to minimize scope of +e
+          ( set +e
+            $RUN -r $PASS "$@"
+            local RET=$?
+            set -e
+            if [ $RET -eq $EXPECT ]
+            then
+              echo -e "\033[0;32mGot $RET, expected $EXPECT: OK\033[0m"
+              true
+            else
+              echo -e "\033[0;31mGot $RET, expected $EXPECT: BAD $fail\033[0m"
+              false
+            fi
+          )
+        }
+        EOF
+
     - name: run lisp
       continue-on-error: true
       run: |
         ros -e '(format t "~a:~a on ~a~%...~%~%" (lisp-implementation-type) (lisp-implementation-version) (machine-type))'
         ros -e '(format t " fixnum bits:~a~%" (integer-length most-positive-fixnum))'
         ros -e "(ql:quickload 'trivial-features)" -e '(format t "features = ~s~%" *features*)'
+
     - name: update ql dist if we have one cached
       run: ros -e "(ql:update-all-dists :prompt nil)"
 
-    - name: load code and run tests
+    - name: run tests
       run: |
-        ros -e '(handler-bind (#+asdf3.2(asdf:bad-SYSTEM-NAME (function MUFFLE-WARNING))) (handler-case (ql:quickload :ci-example/test) (error (a) (format t "caught error ~s~%~a~%" a a) (uiop:quit 123))))' -e '(ci-example.test:run-tests-for-ci)'
+        run_tests -l ci-example/test '(ci-example.test:run-tests-for-ci)'
+
+
+    - name: smoke test
+      # make sure test failures are caught as expected so we don't
+      # miss failures in the real tests
+      run: |
+        # try some tests that should fail with specific codes in lisp wrapper
+        EXPECT=1 run_tests NIL
+        EXPECT=2 run_tests "(cl:error)"
+        EXPECT=3 run_tests -l "system that does not exist"
+        # and try using a different code for success
+        PASS=123 EXPECT=123 run_tests t
+        PASS=123 EXPECT=1 run_tests nil
