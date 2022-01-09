@@ -156,6 +156,7 @@ jobs:
     - name: run tests
       run: |
         run_tests -l ci-example/test '(ci-example.test:run-tests-for-ci)'
+        run_tests -l ci-example/test '(ci-example.test:run-tests-for-ci2)'
 
 
     - name: smoke test
